@@ -30,6 +30,13 @@ function MetricsBar(props: { metrics: PostMetrics; fontSize?: number }) {
   );
 }
 
+function sortByTimestamp<T extends { timestamp?: string }>(items: T[]): T[] {
+  return [...items].sort((a, b) => {
+    if (a.timestamp === undefined || b.timestamp === undefined) return 0;
+    return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+  });
+}
+
 function TweetCard(props: { input: ThemeRenderInput }) {
   const { post, comments, showMetrics } = props.input;
   const images = post.media.filter((m) => m.type === "image");
@@ -141,12 +148,21 @@ function TweetCard(props: { input: ThemeRenderInput }) {
             gap: "12px",
           }}
         >
-          {comments.map((comment, i) => (
-            <div key={i} style={{ display: "flex", gap: "10px" }}>
+          {sortByTimestamp(comments).map((comment, i) => (
+            <div
+              key={i}
+              style={{
+                display: "flex",
+                gap: "10px",
+                marginLeft: `${Math.min(comment.depth, 4) * 24}px`,
+                paddingLeft: comment.depth > 0 ? "12px" : "0",
+                borderLeft: comment.depth > 0 ? "2px solid #2f3336" : "none",
+              }}
+            >
               <img
                 src={comment.author.anonymizedAvatarUrl}
-                width={32}
-                height={32}
+                width={comment.depth > 0 ? 24 : 32}
+                height={comment.depth > 0 ? 24 : 32}
                 style={{ borderRadius: "50%" }}
               />
               <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>

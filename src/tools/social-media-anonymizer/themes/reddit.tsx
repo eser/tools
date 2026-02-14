@@ -30,6 +30,13 @@ function RedditMetricsBar(props: { metrics: PostMetrics; fontSize?: number }) {
   );
 }
 
+function sortByTimestamp<T extends { timestamp?: string }>(items: T[]): T[] {
+  return [...items].sort((a, b) => {
+    if (a.timestamp === undefined || b.timestamp === undefined) return 0;
+    return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+  });
+}
+
 function RedditPostCard(props: { input: ThemeRenderInput }) {
   const { post, comments, showMetrics } = props.input;
   const images = post.media.filter((m) => m.type === "image");
@@ -108,7 +115,7 @@ function RedditPostCard(props: { input: ThemeRenderInput }) {
             backgroundColor: "#161617",
           }}
         >
-          {comments.map((comment, i) => (
+          {sortByTimestamp(comments).map((comment, i) => (
             <div
               key={i}
               style={{
