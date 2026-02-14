@@ -1,9 +1,37 @@
 import satori from "satori";
-import type { ThemeRenderer, ThemeRenderInput } from "./types.ts";
+import type { PostMetrics, ThemeRenderer, ThemeRenderInput } from "./types.ts";
 import { loadAdditionalAsset, loadFonts } from "./fonts.ts";
 
+function formatCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, "")}K`;
+  return String(n);
+}
+
+function RedditMetricsBar(props: { metrics: PostMetrics; fontSize?: number }) {
+  const { metrics, fontSize = 11 } = props;
+  // Reddit shows upvotes, comments — we'll adapt the available fields
+  const items: Array<{ label: string; count: number }> = [
+    { label: "\u2B06\uFE0F", count: metrics.likes },
+    { label: "\uD83D\uDCAC", count: metrics.replies },
+    { label: "\uD83D\uDD01", count: metrics.retweets },
+    { label: "\uD83D\uDD16", count: metrics.bookmarks },
+  ];
+
+  return (
+    <div style={{ display: "flex", gap: "12px", marginTop: "4px" }}>
+      {items.map((item, i) => (
+        <div key={i} style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+          <span style={{ fontSize: `${fontSize}px` }}>{item.label}</span>
+          <span style={{ fontSize: `${fontSize}px`, color: "#818384" }}>{formatCount(item.count)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function RedditPostCard(props: { input: ThemeRenderInput }) {
-  const { post, comments } = props.input;
+  const { post, comments, showMetrics } = props.input;
   const images = post.media.filter((m) => m.type === "image");
 
   return (
@@ -49,6 +77,9 @@ function RedditPostCard(props: { input: ThemeRenderInput }) {
         {post.content.split("\n").filter((l) => l.length > 0).map((line, i) => (
           <p key={i} style={{ fontSize: "14px", lineHeight: 1.6, margin: 0 }}>{line}</p>
         ))}
+        {showMetrics && post.metrics !== undefined && (
+          <RedditMetricsBar metrics={post.metrics} fontSize={12} />
+        )}
       </div>
 
       {/* Media */}
@@ -109,6 +140,9 @@ function RedditPostCard(props: { input: ThemeRenderInput }) {
                     <p key={j} style={{ fontSize: "12px", lineHeight: 1.4, margin: 0 }}>{line}</p>
                   ))}
                 </div>
+                {showMetrics && comment.metrics !== undefined && (
+                  <RedditMetricsBar metrics={comment.metrics} fontSize={10} />
+                )}
               </div>
             </div>
           ))}

@@ -40,6 +40,14 @@ export async function execute(
       context.signal,
     );
 
+    // Strip metrics if not requested
+    if (!input.includeMetrics) {
+      rawPost.metrics = undefined;
+      for (const comment of rawPost.comments) {
+        comment.metrics = undefined;
+      }
+    }
+
     context.onProgress?.({ message: "Done", percent: 100 });
     return toolOk(rawPost);
   } catch (err) {

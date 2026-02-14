@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { RawSocialPostSchema } from "../social-media-retriever/schema.ts";
+import { PostMetricsSchema, RawSocialPostSchema } from "../social-media-retriever/schema.ts";
 
 export const AnonymizedUserSchema = z.object({
   anonymizedId: z.string(),
@@ -12,6 +12,7 @@ export const AnonymizedCommentSchema = z.object({
   content: z.string(),
   timestamp: z.string().optional(),
   depth: z.number().int().default(0),
+  metrics: PostMetricsSchema.optional(),
 });
 
 export const AnonymizerInputSchema = RawSocialPostSchema.extend({
@@ -40,6 +41,7 @@ export const AnonymizerOutputSchema = z.object({
       }),
     ),
     quotedPost: AnonymizedQuotedPostSchema.optional(),
+    metrics: PostMetricsSchema.optional(),
   }),
   comments: z.array(AnonymizedCommentSchema),
   metadata: z.object({

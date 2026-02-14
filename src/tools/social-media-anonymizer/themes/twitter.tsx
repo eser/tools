@@ -1,9 +1,37 @@
 import satori from "satori";
-import type { ThemeRenderer, ThemeRenderInput } from "./types.ts";
+import type { PostMetrics, ThemeRenderer, ThemeRenderInput } from "./types.ts";
 import { loadAdditionalAsset, loadFonts } from "./fonts.ts";
 
+function formatCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, "")}K`;
+  return String(n);
+}
+
+function MetricsBar(props: { metrics: PostMetrics; fontSize?: number }) {
+  const { metrics, fontSize = 13 } = props;
+  const items: Array<{ icon: string; count: number }> = [
+    { icon: "\uD83D\uDCAC", count: metrics.replies },
+    { icon: "\uD83D\uDD01", count: metrics.retweets },
+    { icon: "\u2764\uFE0F", count: metrics.likes },
+    { icon: "\uD83D\uDD16", count: metrics.bookmarks },
+    { icon: "\uD83D\uDCC8", count: metrics.views },
+  ];
+
+  return (
+    <div style={{ display: "flex", gap: "16px", marginTop: "8px" }}>
+      {items.map((item, i) => (
+        <div key={i} style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+          <span style={{ fontSize: `${fontSize}px` }}>{item.icon}</span>
+          <span style={{ fontSize: `${fontSize}px`, color: "#71767b" }}>{formatCount(item.count)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function TweetCard(props: { input: ThemeRenderInput }) {
-  const { post, comments } = props.input;
+  const { post, comments, showMetrics } = props.input;
   const images = post.media.filter((m) => m.type === "image");
 
   return (
@@ -95,6 +123,9 @@ function TweetCard(props: { input: ThemeRenderInput }) {
               {new Date(post.timestamp).toLocaleString()}
             </span>
           )}
+          {showMetrics && post.metrics !== undefined && (
+            <MetricsBar metrics={post.metrics} />
+          )}
         </div>
       </div>
 
@@ -134,6 +165,9 @@ function TweetCard(props: { input: ThemeRenderInput }) {
                     <p key={j} style={{ fontSize: "13px", lineHeight: 1.4, margin: 0, color: "#d6d9db" }}>{line}</p>
                   ))}
                 </div>
+                {showMetrics && comment.metrics !== undefined && (
+                  <MetricsBar metrics={comment.metrics} fontSize={11} />
+                )}
               </div>
             </div>
           ))}

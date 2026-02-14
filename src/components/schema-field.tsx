@@ -12,6 +12,12 @@ import {
 import { Button } from "@/components/ui/button.tsx";
 import { type JsonSchemaProperty, getFieldControl } from "@/lib/json-schema.ts";
 
+function enumLabel(value: string): string {
+  return value
+    .replace(/[-_]/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 interface SchemaFieldProps {
   fieldKey: string;
   schema: JsonSchemaProperty;
@@ -63,12 +69,14 @@ export function SchemaField(props: SchemaFieldProps) {
           onValueChange={(val) => onChange(val || undefined)}
         >
           <SelectTrigger className="w-full">
-            <SelectValue placeholder={schema.default !== undefined ? String(schema.default) : "-- Select --"} />
+            <SelectValue placeholder={schema.default !== undefined ? enumLabel(String(schema.default)) : "-- Select --"}>
+              {(val: string) => enumLabel(val)}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {schema.enum!.map((opt) => (
               <SelectItem key={opt} value={opt}>
-                {opt}
+                {enumLabel(opt)}
               </SelectItem>
             ))}
           </SelectContent>

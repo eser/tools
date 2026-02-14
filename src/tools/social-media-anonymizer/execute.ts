@@ -33,12 +33,15 @@ export async function execute(
       };
     }
 
+    const showMetrics = input.metrics !== undefined;
+
     const anonymizedComments = await Promise.all(
       input.comments.map(async (c) => ({
         author: await anonymizer.anonymize(c.author),
         content: c.content,
         timestamp: c.timestamp,
         depth: c.depth,
+        metrics: c.metrics,
       })),
     );
 
@@ -90,18 +93,21 @@ export async function execute(
 
       svg = await renderer.render({
         platform: input.platform,
+        showMetrics,
         post: {
           author: inlineAuthor(postAuthor),
           content: postContent,
           timestamp: input.timestamp,
           media: inlineMedia,
           quotedPost: inlineQuotedPost,
+          metrics: input.metrics,
         },
         comments: anonymizedComments.map((c) => ({
           author: inlineAuthor(c.author),
           content: c.content,
           timestamp: c.timestamp,
           depth: c.depth,
+          metrics: c.metrics,
         })),
       });
     }
@@ -116,6 +122,7 @@ export async function execute(
         timestamp: input.timestamp,
         media: input.media,
         quotedPost: anonymizedQuotedPost,
+        metrics: input.metrics,
       },
       comments: anonymizedComments,
       metadata: {

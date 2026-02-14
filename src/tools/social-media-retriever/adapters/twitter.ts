@@ -1,8 +1,19 @@
-import type { RawComment, RawSocialPost, RawUser, SocialAdapter } from "./types.ts";
+import type { PostMetrics, RawComment, RawSocialPost, RawUser, SocialAdapter } from "./types.ts";
 
 function extractTweetId(url: string): string | null {
   const match = url.match(/(?:twitter|x)\.com\/\w+\/status\/(\d+)/);
   return match !== null ? match[1] : null;
+}
+
+function extractMetrics(pm: Record<string, number> | undefined): PostMetrics | undefined {
+  if (pm === undefined) return undefined;
+  return {
+    replies: pm.reply_count ?? 0,
+    retweets: pm.retweet_count ?? 0,
+    likes: pm.like_count ?? 0,
+    bookmarks: pm.bookmark_count ?? 0,
+    views: pm.impression_count ?? 0,
+  };
 }
 
 export class TwitterAdapter implements SocialAdapter {
@@ -108,7 +119,7 @@ export class TwitterAdapter implements SocialAdapter {
       searchUrl.searchParams.set("query", `conversation_id:${conversationId}`);
       searchUrl.searchParams.set("max_results", String(Math.min(options.maxComments, 100)));
       searchUrl.searchParams.set("expansions", "author_id");
-      searchUrl.searchParams.set("tweet.fields", "created_at,text,note_tweet,in_reply_to_user_id,referenced_tweets");
+      searchUrl.searchParams.set("tweet.fields", "created_at,text,note_tweet,in_reply_to_user_id,referenced_tweets,public_metrics");
       searchUrl.searchParams.set("user.fields", "name,username,profile_image_url");
 
       // Full-archive search requires start_time for older tweets
@@ -179,7 +190,7 @@ export class TwitterAdapter implements SocialAdapter {
 
           comments = descendants
             .slice(0, options.maxComments)
-            .map((reply: { id: string; author_id: string; text: string; note_tweet?: { text: string }; created_at?: string }) => ({
+            .map((reply: { id: string; author_id: string; text: string; note_tweet?: { text: string }; created_at?: string; public_metrics?: Record<string, number> }) => ({
               author: users[reply.author_id] ?? {
                 id: reply.author_id,
                 username: "unknown",
@@ -188,6 +199,7 @@ export class TwitterAdapter implements SocialAdapter {
               content: reply.note_tweet?.text ?? reply.text,
               timestamp: reply.created_at,
               depth: getDepth(reply.id),
+              metrics: extractMetrics(reply.public_metrics),
             }));
         }
       }
@@ -206,6 +218,7 @@ export class TwitterAdapter implements SocialAdapter {
       timestamp: tweet.created_at,
       media,
       quotedPost,
+      metrics: extractMetrics(tweet.public_metrics),
       comments,
       totalCommentsFound: searchResultCount,
     };

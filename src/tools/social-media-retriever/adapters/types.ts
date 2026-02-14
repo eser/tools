@@ -5,11 +5,20 @@ export interface RawUser {
   avatarUrl?: string;
 }
 
+export interface PostMetrics {
+  replies: number;
+  retweets: number;
+  likes: number;
+  bookmarks: number;
+  views: number;
+}
+
 export interface RawComment {
   author: RawUser;
   content: string;
   timestamp?: string;
   depth: number;
+  metrics?: PostMetrics;
 }
 
 export interface RawQuotedPost {
@@ -25,6 +34,7 @@ export interface RawSocialPost {
   timestamp?: string;
   media: Array<{ type: "image" | "video" | "link"; url: string }>;
   quotedPost?: RawQuotedPost;
+  metrics?: PostMetrics;
   comments: RawComment[];
   totalCommentsFound: number;
 }
