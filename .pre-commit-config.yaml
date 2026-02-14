@@ -42,7 +42,6 @@ repos:
         stages: [commit-msg]
         args: [
           "--strict",
-          "--force-scope",
           "ci",
           "chore",
           "docs",

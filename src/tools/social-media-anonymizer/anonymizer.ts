@@ -38,6 +38,7 @@ async function computeHash(input: string, secret: string): Promise<string> {
 export class Anonymizer {
   private secret: string;
   private cache = new Map<string, AnonymizedUser>();
+  private handleCache = new Map<string, AnonymizedUser>();
 
   constructor(secret?: string) {
     this.secret = secret ?? crypto.randomUUID();
@@ -66,7 +67,16 @@ export class Anonymizer {
     };
 
     this.cache.set(key, result);
+    this.handleCache.set(user.username.toLowerCase(), result);
     return result;
+  }
+
+  async anonymizeHandle(handle: string): Promise<AnonymizedUser> {
+    const lower = handle.toLowerCase();
+    const cached = this.handleCache.get(lower);
+    if (cached !== undefined) return cached;
+
+    return this.anonymize({ id: `handle:${lower}`, username: lower });
   }
 
   get uniqueCount(): number {

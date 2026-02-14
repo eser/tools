@@ -6,20 +6,11 @@ import type {
   ToolResult,
 } from "./types.ts";
 import { registry } from "./registry.ts";
-
-function getNestedField(obj: unknown, path: string): unknown {
-  const parts = path.split(".");
-  let current: unknown = obj;
-
-  for (const part of parts) {
-    if (current === null || current === undefined) {
-      return undefined;
-    }
-    current = (current as Record<string, unknown>)[part];
-  }
-
-  return current;
-}
+import {
+  getNestedField,
+  resolveExpressions,
+  type ExpressionContext,
+} from "./pipeline-expressions.ts";
 
 function resolveInputMappings(
   mappings: Record<string, InputMapping>,
@@ -48,6 +39,7 @@ export async function executePipeline(
 ): Promise<ToolResult<PipelineResult>> {
   const stepOutputs: unknown[] = [];
   const stepResults: PipelineResult["steps"] = [];
+  const variables: Record<string, unknown> = {};
   const totalStart = Date.now();
 
   for (let i = 0; i < definition.steps.length; i++) {
@@ -61,8 +53,9 @@ export async function executePipeline(
       };
     }
 
-    // Build input: start with explicit input, overlay mapped values
-    let input: Record<string, unknown> = { ...step.input };
+    // Build input: resolve expressions, then overlay legacy inputMapping
+    const exprContext: ExpressionContext = { stepOutputs, variables };
+    let input = resolveExpressions(step.input ?? {}, exprContext) as Record<string, unknown>;
 
     if (step.inputMapping !== undefined) {
       const mapped = resolveInputMappings(step.inputMapping, stepOutputs);
@@ -100,6 +93,12 @@ export async function executePipeline(
       output: result.value,
       durationMs,
     });
+
+    // Accumulate variables from variable-set steps
+    if (step.toolId === "variable-set") {
+      const output = result.value as { name: string; value: unknown };
+      variables[output.name] = output.value;
+    }
   }
 
   context.onProgress?.({ message: "Pipeline complete", percent: 100 });

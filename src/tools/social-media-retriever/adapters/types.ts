@@ -12,12 +12,19 @@ export interface RawComment {
   depth: number;
 }
 
+export interface RawQuotedPost {
+  author: RawUser;
+  content: string;
+  timestamp?: string;
+}
+
 export interface RawSocialPost {
   platform: "twitter" | "reddit";
   author: RawUser;
   content: string;
   timestamp?: string;
   media: Array<{ type: "image" | "video" | "link"; url: string }>;
+  quotedPost?: RawQuotedPost;
   comments: RawComment[];
   totalCommentsFound: number;
 }

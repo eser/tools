@@ -14,9 +14,18 @@ export const AnonymizedCommentSchema = z.object({
   depth: z.number().int().default(0),
 });
 
-export const AnonymizerInputSchema = RawSocialPostSchema.describe(
-  "Raw social post data from the Social Media Retriever",
-);
+export const AnonymizerInputSchema = RawSocialPostSchema.extend({
+  anonymizeMentions: z
+    .boolean()
+    .default(false)
+    .describe("Replace @mentions in content with anonymized handles"),
+}).describe("Raw social post data from the Social Media Retriever");
+
+export const AnonymizedQuotedPostSchema = z.object({
+  author: AnonymizedUserSchema,
+  content: z.string(),
+  timestamp: z.string().optional(),
+});
 
 export const AnonymizerOutputSchema = z.object({
   platform: z.enum(["twitter", "reddit"]),
@@ -30,6 +39,7 @@ export const AnonymizerOutputSchema = z.object({
         url: z.string(),
       }),
     ),
+    quotedPost: AnonymizedQuotedPostSchema.optional(),
   }),
   comments: z.array(AnonymizedCommentSchema),
   metadata: z.object({

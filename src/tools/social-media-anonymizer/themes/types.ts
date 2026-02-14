@@ -6,10 +6,17 @@ export interface ThemeRenderInput {
     author: AnonymizedUser;
     content: string;
     timestamp?: string;
+    media: Array<{ type: "image" | "video" | "link"; url: string }>;
+    quotedPost?: {
+      author: AnonymizedUser;
+      content: string;
+      timestamp?: string;
+    };
   };
   comments: Array<{
     author: AnonymizedUser;
     content: string;
+    timestamp?: string;
     depth: number;
   }>;
 }

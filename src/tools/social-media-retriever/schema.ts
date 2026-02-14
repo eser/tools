@@ -14,6 +14,12 @@ export const RawCommentSchema = z.object({
   depth: z.number().int().default(0),
 });
 
+export const RawQuotedPostSchema = z.object({
+  author: RawUserSchema,
+  content: z.string(),
+  timestamp: z.string().optional(),
+});
+
 export const RawSocialPostSchema = z.object({
   platform: z.enum(["twitter", "reddit"]),
   author: RawUserSchema,
@@ -25,6 +31,7 @@ export const RawSocialPostSchema = z.object({
       url: z.string(),
     }),
   ),
+  quotedPost: RawQuotedPostSchema.optional(),
   comments: z.array(RawCommentSchema),
   totalCommentsFound: z.number().int(),
 });

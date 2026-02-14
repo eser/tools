@@ -1,13 +1,15 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { listTools, runPipeline, savePipeline, getSavedPipeline, deleteSavedPipeline } from "@/server/functions.ts";
+import { useRef, useState } from "react";
+import { listToolsWithSchemas, runPipeline, savePipeline, getSavedPipeline, deleteSavedPipeline } from "@/server/functions.ts";
 import { PipelineBuilder } from "@/components/pipeline-builder.tsx";
+import type { PipelineBuilderHandle } from "@/components/pipeline-builder.tsx";
 import { ToolOutput } from "@/components/tool-output.tsx";
+import { Button } from "@/components/ui/button.tsx";
 
 export const Route = createFileRoute("/pipelines/$pipelineId")({
   loader: async ({ params }) => {
     const [tools, pipeline] = await Promise.all([
-      listTools(),
+      listToolsWithSchemas(),
       getSavedPipeline({ data: { id: params.pipelineId } }),
     ]);
     return { tools, pipeline };
@@ -18,6 +20,7 @@ export const Route = createFileRoute("/pipelines/$pipelineId")({
 function EditPipelinePage() {
   const { tools, pipeline } = Route.useLoaderData();
   const navigate = useNavigate();
+  const builderRef = useRef<PipelineBuilderHandle>(null);
   const [results, setResults] = useState<unknown>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -69,16 +72,30 @@ function EditPipelinePage() {
 
   return (
     <div className="container mx-auto py-12 px-4">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">{pipeline.name}</h1>
-        {pipeline.description && (
-          <p className="text-muted-foreground">{pipeline.description}</p>
-        )}
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">{pipeline.name}</h1>
+          {pipeline.description && (
+            <p className="text-muted-foreground">{pipeline.description}</p>
+          )}
+        </div>
+        <div className="flex gap-3 shrink-0">
+          <Button variant="destructive" onClick={() => handleDelete(pipeline.id)}>
+            Delete
+          </Button>
+          <Button variant="secondary" onClick={() => builderRef.current?.save()} disabled={saving}>
+            {saving ? "Saving..." : "Save Pipeline"}
+          </Button>
+          <Button onClick={() => builderRef.current?.run()} disabled={loading}>
+            {loading ? "Running..." : "Run Pipeline"}
+          </Button>
+        </div>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div>
           <h2 className="text-lg font-semibold mb-4">Steps</h2>
           <PipelineBuilder
+            ref={builderRef}
             tools={tools}
             onRun={handleRun}
             onSave={handleSave}

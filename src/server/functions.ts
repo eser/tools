@@ -12,6 +12,12 @@ export const listTools = createServerFn({ method: "GET" }).handler(
   },
 );
 
+export const listToolsWithSchemas = createServerFn({ method: "GET" }).handler(
+  async () => {
+    return registry.listWithSchemas();
+  },
+);
+
 export const getToolMeta = createServerFn({ method: "GET" })
   .inputValidator(z.object({ toolId: z.string() }))
   .handler(async ({ data }) => {

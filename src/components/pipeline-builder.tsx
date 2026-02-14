@@ -1,10 +1,9 @@
-import { useEffect } from "react";
+import { useState, useEffect, useImperativeHandle, type Ref } from "react";
 import { useForm } from "@tanstack/react-form";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card.tsx";
-import { Textarea } from "@/components/ui/textarea.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Separator } from "@/components/ui/separator.tsx";
 import {
@@ -14,18 +13,23 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select.tsx";
+import { SchemaForm } from "@/components/schema-form.tsx";
+import { CopyButton } from "@/components/copy-button.tsx";
+import type { JsonSchema, JsonSchemaProperty } from "@/lib/json-schema.ts";
+import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
 
 interface ToolInfo {
   id: string;
   name: string;
   description: string;
   category: string;
+  inputSchema?: unknown;
+  outputSchema?: unknown;
 }
 
 interface PipelineStepState {
   toolId: string;
   inputJson: string;
-  inputMappingJson: string;
 }
 
 interface InitialPipeline {
@@ -39,6 +43,11 @@ interface InitialPipeline {
   }>;
 }
 
+export interface PipelineBuilderHandle {
+  run: () => void;
+  save: () => void;
+}
+
 interface PipelineBuilderProps {
   tools: ToolInfo[];
   onRun: (definition: unknown) => void;
@@ -47,6 +56,7 @@ interface PipelineBuilderProps {
   loading: boolean;
   saving?: boolean;
   initialPipeline?: InitialPipeline | null;
+  ref?: Ref<PipelineBuilderHandle>;
 }
 
 function slugify(text: string): string {
@@ -64,17 +74,75 @@ function stepsToDefinition(steps: PipelineStepState[]) {
       const input = JSON.parse(step.inputJson);
       if (Object.keys(input).length > 0) result.input = input;
     } catch { /* skip */ }
-    if (step.inputMappingJson.trim().length > 0) {
-      try {
-        result.inputMapping = JSON.parse(step.inputMappingJson);
-      } catch { /* skip */ }
-    }
     return result;
   });
 }
 
+/** Convert legacy inputMapping to expression values in input */
+function migrateInputMapping(
+  input: Record<string, unknown> | undefined,
+  inputMapping: Record<string, { fromStep: number; field?: string }> | undefined,
+): string {
+  const merged: Record<string, unknown> = { ...input };
+  if (inputMapping !== undefined) {
+    for (const [key, mapping] of Object.entries(inputMapping)) {
+      const fieldPath = mapping.field !== undefined ? `.${mapping.field}` : "";
+      merged[key] = `\${{ steps.${mapping.fromStep}.output${fieldPath} }}`;
+    }
+  }
+  return JSON.stringify(merged, null, 2);
+}
+
+function StepOutputSchema(props: { schema: unknown; stepIndex: number }) {
+  const [expanded, setExpanded] = useState(false);
+  const jsonSchema = props.schema as JsonSchema | null;
+
+  if (jsonSchema === null || jsonSchema === undefined || jsonSchema.properties === undefined) {
+    return null;
+  }
+
+  const properties = jsonSchema.properties;
+
+  return (
+    <div className="space-y-2">
+      <button
+        type="button"
+        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        onClick={() => setExpanded(!expanded)}
+      >
+        {expanded
+          ? <ChevronDownIcon className="size-3" />
+          : <ChevronRightIcon className="size-3" />}
+        Output Fields
+      </button>
+      {expanded && (
+        <div className="rounded-md border border-border bg-muted/30 p-3 space-y-1.5">
+          {Object.entries(properties).map(([key, prop]) => {
+            const p = prop as JsonSchemaProperty;
+            const expr = `\${{ steps.${props.stepIndex}.output.${key} }}`;
+            return (
+              <div key={key} className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <code className="text-xs font-mono truncate">{key}</code>
+                  <Badge variant="secondary" className="text-[10px] shrink-0">
+                    {p.type ?? "unknown"}
+                  </Badge>
+                </div>
+                <CopyButton text={expr} className="h-5 text-[10px] shrink-0" />
+              </div>
+            );
+          })}
+          <p className="text-[10px] text-muted-foreground pt-1">
+            Copy a reference and paste it into an input field in expression mode.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function PipelineBuilder(props: PipelineBuilderProps) {
-  const { tools, onRun, onSave, onDelete, loading, saving, initialPipeline } = props;
+  const { tools, onRun, onSave, onDelete, loading, saving, initialPipeline, ref } = props;
 
   const form = useForm({
     defaultValues: {
@@ -96,8 +164,7 @@ export function PipelineBuilder(props: PipelineBuilderProps) {
       "steps",
       initialPipeline.steps.map((s) => ({
         toolId: s.toolId,
-        inputJson: s.input !== undefined ? JSON.stringify(s.input, null, 2) : "{}",
-        inputMappingJson: s.inputMapping !== undefined ? JSON.stringify(s.inputMapping, null, 2) : "",
+        inputJson: migrateInputMapping(s.input, s.inputMapping),
       })),
     );
   }, [initialPipeline]);
@@ -115,6 +182,11 @@ export function PipelineBuilder(props: PipelineBuilderProps) {
     if (onSave === undefined || slug.length === 0 || name.length === 0) return;
     onSave({ id: slug, name, description, steps: stepsToDefinition(steps) });
   };
+
+  useImperativeHandle(ref, () => ({
+    run: handleRun,
+    save: handleSave,
+  }));
 
   return (
     <div className="space-y-4">
@@ -187,7 +259,7 @@ export function PipelineBuilder(props: PipelineBuilderProps) {
           const addStep = () => {
             stepsField.handleChange([
               ...steps,
-              { toolId: tools[0]?.id ?? "", inputJson: "{}", inputMappingJson: "" },
+              { toolId: tools[0]?.id ?? "", inputJson: "{}" },
             ]);
           };
 
@@ -219,75 +291,66 @@ export function PipelineBuilder(props: PipelineBuilderProps) {
                 </div>
               )}
 
-              {steps.map((step, index) => (
-                <Card key={index}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm font-medium">Step {index + 1}</CardTitle>
-                      <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => moveStep(index, "up")} disabled={index === 0}>
-                          ↑
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => moveStep(index, "down")} disabled={index === steps.length - 1}>
-                          ↓
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => removeStep(index)} className="text-destructive">
-                          ×
-                        </Button>
+              {steps.map((step, index) => {
+                const selectedTool = tools.find((t) => t.id === step.toolId);
+
+                return (
+                  <Card key={index}>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm font-medium">Step {index + 1}</CardTitle>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => moveStep(index, "up")} disabled={index === 0}>
+                            ↑
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => moveStep(index, "down")} disabled={index === steps.length - 1}>
+                            ↓
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => removeStep(index)} className="text-destructive">
+                            ×
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Tool</Label>
-                      <Select value={step.toolId} onValueChange={(val) => updateStep(index, { toolId: val })}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select a tool">
-                            {(val) => tools.find((t) => t.id === val)?.name ?? "Select a tool"}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {tools.map((tool) => (
-                            <SelectItem key={tool.id} value={tool.id}>
-                              {tool.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Direct Input (JSON)</Label>
-                      <Textarea
-                        value={step.inputJson}
-                        onChange={(e) => updateStep(index, { inputJson: e.target.value })}
-                        rows={3}
-                        className="font-mono text-xs"
-                        placeholder='{"key": "value"}'
-                      />
-                    </div>
-
-                    {index > 0 && (
+                    </CardHeader>
+                    <CardContent className="space-y-4">
                       <div className="space-y-2">
-                        <Label>
-                          Input Mapping (JSON)
-                          <Badge variant="secondary" className="ml-2 text-[10px]">optional</Badge>
-                        </Label>
-                        <Textarea
-                          value={step.inputMappingJson}
-                          onChange={(e) => updateStep(index, { inputMappingJson: e.target.value })}
-                          rows={3}
-                          className="font-mono text-xs"
-                          placeholder={`{"fieldName": {"fromStep": ${index - 1}, "field": "outputField"}}`}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Map fields from previous step outputs. Use fromStep (0-indexed) and field (dot-path).
-                        </p>
+                        <Label>Tool</Label>
+                        <Select value={step.toolId} onValueChange={(val) => updateStep(index, { toolId: val, inputJson: "{}" })}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select a tool">
+                              {(val) => tools.find((t) => t.id === val)?.name ?? "Select a tool"}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {tools.map((tool) => (
+                              <SelectItem key={tool.id} value={tool.id}>
+                                {tool.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+
+                      <div className="space-y-2">
+                        <Label>Input</Label>
+                        <SchemaForm
+                          schema={(selectedTool?.inputSchema as JsonSchema) ?? null}
+                          value={step.inputJson}
+                          onChange={(json) => updateStep(index, { inputJson: json })}
+                          enableExpressions={index > 0}
+                        />
+                      </div>
+
+                      {selectedTool?.outputSchema !== undefined && (
+                        <StepOutputSchema
+                          schema={selectedTool.outputSchema}
+                          stepIndex={index}
+                        />
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
 
               <div className="flex gap-3">
                 <Button variant="outline" onClick={addStep} className="flex-1">
@@ -296,33 +359,13 @@ export function PipelineBuilder(props: PipelineBuilderProps) {
               </div>
 
               {steps.length > 0 && (
-                <div className="flex gap-3">
-                  <Button onClick={handleRun} disabled={loading} className="flex-1">
-                    {loading ? "Running..." : "Run Pipeline"}
-                  </Button>
-                  {onSave !== undefined && (
-                    <Button
-                      variant="secondary"
-                      onClick={handleSave}
-                      disabled={saving === true || form.getFieldValue("slug").length === 0 || form.getFieldValue("name").length === 0}
-                      className="flex-1"
-                    >
-                      {saving ? "Saving..." : "Save Pipeline"}
-                    </Button>
-                  )}
-                  {onDelete !== undefined && initialPipeline !== null && initialPipeline !== undefined && (
-                    <Button variant="destructive" onClick={() => onDelete(initialPipeline.id)} className="flex-none">
-                      Delete
-                    </Button>
-                  )}
-                </div>
-              )}
-
-              {steps.length > 0 && (
                 <>
                   <Separator />
                   <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Pipeline Definition (read-only)</Label>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs text-muted-foreground">Pipeline Definition (read-only)</Label>
+                      <CopyButton text={JSON.stringify({ steps: stepsToDefinition(steps) }, null, 2)} className="h-6 text-xs" />
+                    </div>
                     <pre className="text-xs font-mono bg-muted p-3 rounded-lg overflow-auto max-h-48">
                       {JSON.stringify({ steps: stepsToDefinition(steps) }, null, 2)}
                     </pre>

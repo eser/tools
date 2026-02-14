@@ -23,7 +23,7 @@ export class TwitterAdapter implements SocialAdapter {
     if (bearerToken === undefined || bearerToken === "") {
       throw new Error(
         "Twitter/X API requires TWITTER_BEARER_TOKEN environment variable. " +
-          "The X API requires paid access ($200/mo Basic tier or pay-per-use credits). " +
+          "The X API requires pay-per-use credits. " +
           "Set the token in your .env file to use the Twitter adapter.",
       );
     }
@@ -35,8 +35,8 @@ export class TwitterAdapter implements SocialAdapter {
 
     // Fetch tweet with author expansion
     const tweetUrl = new URL(`https://api.x.com/2/tweets/${tweetId}`);
-    tweetUrl.searchParams.set("expansions", "author_id,attachments.media_keys");
-    tweetUrl.searchParams.set("tweet.fields", "created_at,text,conversation_id,public_metrics");
+    tweetUrl.searchParams.set("expansions", "author_id,attachments.media_keys,referenced_tweets.id,referenced_tweets.id.author_id");
+    tweetUrl.searchParams.set("tweet.fields", "created_at,text,note_tweet,conversation_id,public_metrics,referenced_tweets");
     tweetUrl.searchParams.set("user.fields", "name,username,profile_image_url");
     tweetUrl.searchParams.set("media.fields", "type,url,preview_image_url");
 
@@ -76,16 +76,45 @@ export class TwitterAdapter implements SocialAdapter {
       }
     }
 
-    // Fetch replies if requested
+    // Extract quoted tweet if present
+    let quotedPost: { author: RawUser; content: string; timestamp?: string } | undefined;
+    const quotedRef = tweet.referenced_tweets?.find(
+      (r: { type: string; id: string }) => r.type === "quoted",
+    );
+    if (quotedRef !== undefined && tweetData.includes?.tweets !== undefined) {
+      const quotedTweet = tweetData.includes.tweets.find(
+        (t: { id: string }) => t.id === quotedRef.id,
+      );
+      if (quotedTweet !== undefined) {
+        const quotedAuthor = users[quotedTweet.author_id] ?? {
+          id: quotedTweet.author_id,
+          username: "unknown",
+          displayName: "Unknown",
+        };
+        quotedPost = {
+          author: quotedAuthor,
+          content: quotedTweet.note_tweet?.text ?? quotedTweet.text,
+          timestamp: quotedTweet.created_at,
+        };
+      }
+    }
+
+    // Fetch replies if requested using full-archive search
     let comments: RawComment[] = [];
+    let searchResultCount = 0;
     if (options.includeComments) {
       const conversationId = tweet.conversation_id ?? tweetId;
-      const searchUrl = new URL("https://api.x.com/2/tweets/search/recent");
-      searchUrl.searchParams.set("query", `conversation_id:${conversationId} is:reply`);
+      const searchUrl = new URL("https://api.x.com/2/tweets/search/all");
+      searchUrl.searchParams.set("query", `conversation_id:${conversationId}`);
       searchUrl.searchParams.set("max_results", String(Math.min(options.maxComments, 100)));
       searchUrl.searchParams.set("expansions", "author_id");
-      searchUrl.searchParams.set("tweet.fields", "created_at,text,in_reply_to_user_id");
+      searchUrl.searchParams.set("tweet.fields", "created_at,text,note_tweet,in_reply_to_user_id,referenced_tweets");
       searchUrl.searchParams.set("user.fields", "name,username,profile_image_url");
+
+      // Full-archive search requires start_time for older tweets
+      if (tweet.created_at !== undefined) {
+        searchUrl.searchParams.set("start_time", tweet.created_at);
+      }
 
       const searchResponse = await fetch(searchUrl.toString(), {
         signal,
@@ -94,6 +123,7 @@ export class TwitterAdapter implements SocialAdapter {
 
       if (searchResponse.ok) {
         const searchData = await searchResponse.json();
+        searchResultCount = searchData.meta?.result_count ?? 0;
 
         if (searchData.includes?.users !== undefined) {
           for (const user of searchData.includes.users) {
@@ -107,17 +137,57 @@ export class TwitterAdapter implements SocialAdapter {
         }
 
         if (searchData.data !== undefined) {
-          comments = searchData.data
+          // Build parent map from referenced_tweets
+          const parentMap: Record<string, string> = {};
+          for (const reply of searchData.data) {
+            const repliedTo = reply.referenced_tweets?.find(
+              (r: { type: string; id: string }) => r.type === "replied_to",
+            );
+            if (repliedTo !== undefined) {
+              parentMap[reply.id] = repliedTo.id;
+            }
+          }
+
+          // Check if a tweet is a descendant of the fetched tweet
+          const isDescendant = (id: string): boolean => {
+            if (id === tweetId) return true;
+            const parentId = parentMap[id];
+            if (parentId === undefined) return false;
+            return isDescendant(parentId);
+          };
+
+          // Calculate depth relative to the fetched tweet (direct reply = 0)
+          const depthCache: Record<string, number> = { [tweetId]: -1 };
+          const getDepth = (id: string): number => {
+            if (depthCache[id] !== undefined) return depthCache[id];
+            const parentId = parentMap[id];
+            if (parentId === undefined) {
+              depthCache[id] = 0;
+              return 0;
+            }
+            const depth = getDepth(parentId) + 1;
+            depthCache[id] = depth;
+            return depth;
+          };
+
+          // Only include tweets that are descendants of the fetched tweet
+          const descendants = searchData.data.filter(
+            (reply: { id: string }) => reply.id !== tweetId && isDescendant(reply.id),
+          );
+
+          searchResultCount = descendants.length;
+
+          comments = descendants
             .slice(0, options.maxComments)
-            .map((reply: { author_id: string; text: string; created_at?: string }) => ({
+            .map((reply: { id: string; author_id: string; text: string; note_tweet?: { text: string }; created_at?: string }) => ({
               author: users[reply.author_id] ?? {
                 id: reply.author_id,
                 username: "unknown",
                 displayName: "Unknown",
               },
-              content: reply.text,
+              content: reply.note_tweet?.text ?? reply.text,
               timestamp: reply.created_at,
-              depth: 0,
+              depth: getDepth(reply.id),
             }));
         }
       }
@@ -132,11 +202,12 @@ export class TwitterAdapter implements SocialAdapter {
     return {
       platform: "twitter",
       author,
-      content: tweet.text,
+      content: tweet.note_tweet?.text ?? tweet.text,
       timestamp: tweet.created_at,
       media,
+      quotedPost,
       comments,
-      totalCommentsFound: tweet.public_metrics?.reply_count ?? 0,
+      totalCommentsFound: searchResultCount,
     };
   }
 }

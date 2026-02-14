@@ -1,3 +1,5 @@
+import { CopyButton } from "@/components/copy-button.tsx";
+
 interface ToolOutputProps {
   data: unknown;
   error: string | null;
@@ -67,8 +69,9 @@ export function ToolOutput(props: ToolOutputProps) {
 
       {/* JSON output */}
       <div className="rounded-lg border border-border overflow-hidden">
-        <div className="px-3 py-2 bg-muted text-xs font-medium border-b border-border">
+        <div className="px-3 py-2 bg-muted text-xs font-medium border-b border-border flex items-center justify-between">
           JSON Output
+          <CopyButton text={JSON.stringify(data, null, 2)} className="h-6 text-xs" />
         </div>
         <pre className="p-4 text-xs overflow-auto max-h-96 font-mono">
           {JSON.stringify(

@@ -1,9 +1,10 @@
 import satori from "satori";
 import type { ThemeRenderer, ThemeRenderInput } from "./types.ts";
+import { loadAdditionalAsset, loadFonts } from "./fonts.ts";
 
 function RedditPostCard(props: { input: ThemeRenderInput }) {
   const { post, comments } = props.input;
-  const maxPreviewComments = Math.min(comments.length, 3);
+  const images = post.media.filter((m) => m.type === "image");
 
   return (
     <div
@@ -13,7 +14,7 @@ function RedditPostCard(props: { input: ThemeRenderInput }) {
         width: "100%",
         backgroundColor: "#1a1a1b",
         color: "#d7dadc",
-        fontFamily: "sans-serif",
+        fontFamily: "Nunito Sans, sans-serif",
         borderRadius: "8px",
         border: "1px solid #343536",
       }}
@@ -44,14 +45,28 @@ function RedditPostCard(props: { input: ThemeRenderInput }) {
       </div>
 
       {/* Post content */}
-      <div style={{ padding: "8px 16px 16px 16px", display: "flex", flexDirection: "column" }}>
-        <p style={{ fontSize: "14px", lineHeight: 1.6, margin: 0 }}>
-          {post.content}
-        </p>
+      <div style={{ padding: "8px 16px 16px 16px", display: "flex", flexDirection: "column", gap: "8px" }}>
+        {post.content.split("\n").filter((l) => l.length > 0).map((line, i) => (
+          <p key={i} style={{ fontSize: "14px", lineHeight: 1.6, margin: 0 }}>{line}</p>
+        ))}
       </div>
 
+      {/* Media */}
+      {images.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", padding: "0 16px 16px 16px" }}>
+          {images.map((m, i) => (
+            <img
+              key={i}
+              src={m.url}
+              style={{ borderRadius: "8px", maxWidth: "100%" }}
+              width={images.length === 1 ? 568 : 278}
+            />
+          ))}
+        </div>
+      )}
+
       {/* Comments */}
-      {maxPreviewComments > 0 && (
+      {comments.length > 0 && (
         <div
           style={{
             display: "flex",
@@ -62,7 +77,7 @@ function RedditPostCard(props: { input: ThemeRenderInput }) {
             backgroundColor: "#161617",
           }}
         >
-          {comments.slice(0, maxPreviewComments).map((comment, i) => (
+          {comments.map((comment, i) => (
             <div
               key={i}
               style={{
@@ -79,20 +94,21 @@ function RedditPostCard(props: { input: ThemeRenderInput }) {
                 style={{ borderRadius: "50%" }}
               />
               <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
-                <span style={{ fontSize: "11px", fontWeight: 700, color: "#818384" }}>
-                  u/{comment.author.anonymizedName.toLowerCase()}
-                </span>
-                <p
-                  style={{
-                    fontSize: "12px",
-                    lineHeight: 1.4,
-                    margin: "2px 0 0 0",
-                  }}
-                >
-                  {comment.content.length > 200
-                    ? `${comment.content.slice(0, 200)}...`
-                    : comment.content}
-                </p>
+                <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                  <span style={{ fontSize: "11px", fontWeight: 700, color: "#818384" }}>
+                    u/{comment.author.anonymizedName.toLowerCase()}
+                  </span>
+                  {comment.timestamp !== undefined && (
+                    <span style={{ fontSize: "10px", color: "#818384" }}>
+                      {new Date(comment.timestamp).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "4px", margin: "2px 0 0 0" }}>
+                  {comment.content.split("\n").filter((l) => l.length > 0).map((line, j) => (
+                    <p key={j} style={{ fontSize: "12px", lineHeight: 1.4, margin: 0 }}>{line}</p>
+                  ))}
+                </div>
               </div>
             </div>
           ))}
@@ -106,10 +122,12 @@ export class RedditThemeRenderer implements ThemeRenderer {
   platform = "reddit" as const;
 
   async render(input: ThemeRenderInput): Promise<string> {
+    const fonts = await loadFonts();
     const svg = await satori(<RedditPostCard input={input} />, {
       width: 600,
       height: undefined,
-      fonts: [],
+      fonts,
+      loadAdditionalAsset,
     });
     return svg;
   }

@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { ToolDefinition } from "./types.ts";
 import { tools as registeredTools } from "./_registry.gen.ts";
 
@@ -30,6 +31,24 @@ class ToolRegistry {
       name: t.name,
       description: t.description,
       category: t.category,
+    }));
+  }
+
+  listWithSchemas(): Array<{
+    id: string;
+    name: string;
+    description: string;
+    category: string;
+    inputSchema: unknown;
+    outputSchema: unknown;
+  }> {
+    return this.getAll().map((t) => ({
+      id: t.id,
+      name: t.name,
+      description: t.description,
+      category: t.category,
+      inputSchema: z.toJSONSchema(t.inputSchema),
+      outputSchema: z.toJSONSchema(t.outputSchema),
     }));
   }
 }

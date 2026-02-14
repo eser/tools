@@ -102,6 +102,82 @@ describe("executePipeline", () => {
     }
   });
 
+  it("resolves ${{ }} expressions in step input", async () => {
+    const definition: PipelineDefinition = {
+      steps: [
+        {
+          toolId: "vector-renderer",
+          input: { svg: "<svg><circle r='10'/></svg>", format: "svg" },
+        },
+        {
+          toolId: "vector-renderer",
+          input: { svg: "${{ steps.0.output.data }}", format: "svg" },
+        },
+      ],
+    };
+
+    const result = await executePipeline(definition, ctx);
+    assertEquals(result.ok, true);
+    if (result.ok) {
+      assertEquals(result.value.steps.length, 2);
+      const step2Output = result.value.steps[1].output as { data: string };
+      assertEquals(step2Output.data, "<svg><circle r='10'/></svg>");
+    }
+  });
+
+  it("supports variable-set tool and variable expressions", async () => {
+    const definition: PipelineDefinition = {
+      steps: [
+        {
+          toolId: "vector-renderer",
+          input: { svg: "<svg/>", format: "svg" },
+        },
+        {
+          toolId: "variable-set",
+          input: { name: "my-format", value: "${{ steps.0.output.mimeType }}" },
+        },
+        {
+          toolId: "variable-set",
+          input: { name: "my-svg", value: "${{ steps.0.output.data }}" },
+        },
+      ],
+    };
+
+    const result = await executePipeline(definition, ctx);
+    assertEquals(result.ok, true);
+    if (result.ok) {
+      assertEquals(result.value.steps.length, 3);
+      const varOutput1 = result.value.steps[1].output as { name: string; value: unknown };
+      assertEquals(varOutput1.name, "my-format");
+      assertEquals(varOutput1.value, "image/svg+xml");
+      const varOutput2 = result.value.steps[2].output as { name: string; value: unknown };
+      assertEquals(varOutput2.name, "my-svg");
+      assertEquals(varOutput2.value, "<svg/>");
+    }
+  });
+
+  it("uses variables set by variable-set in later steps", async () => {
+    const definition: PipelineDefinition = {
+      steps: [
+        {
+          toolId: "variable-set",
+          input: { name: "my-svg", value: "<svg><rect/></svg>" },
+        },
+        {
+          toolId: "vector-renderer",
+          input: { svg: "${{ variables.my-svg }}", format: "svg" },
+        },
+      ],
+    };
+
+    const result = await executePipeline(definition, ctx);
+    assertEquals(result.ok, true);
+    if (result.ok) {
+      const step2Output = result.value.steps[1].output as { data: string };
+      assertEquals(step2Output.data, "<svg><rect/></svg>");
+    }
+  });
+
   it("records duration for each step", async () => {
     const definition: PipelineDefinition = {
       steps: [
