@@ -24,5 +24,18 @@ Thumbs.db
 *.dylib
 
 # local API keys and secrets
+.env
 .env.local
 .env.*.local
+
+# Dependencies
+node_modules/
+
+# Build outputs
+.output/
+dist/
+
+# TanStack generated files
+.tanstack/
+src/routeTree.gen.ts
+src/tools/_registry.gen.ts

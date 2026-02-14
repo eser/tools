@@ -1,0 +1,32 @@
+{
+  "nodeModulesDir": "auto",
+  "imports": {
+    "@/": "./src/"
+  },
+  "tasks": {
+    "dev": "vite dev --port 3000",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "deno run -A .output/server/index.mjs",
+    "cli": "deno run -A src/cli/index.ts",
+    "test": "deno test --allow-all --no-check src/"
+  },
+  "exclude": [
+    "**/node_modules/*",
+    "**/.tanstack/*",
+    "**/*.gen.ts"
+  ],
+  "lint": {
+    "rules": {
+      "tags": [
+        "recommended"
+      ],
+      "exclude": [
+        "no-sloppy-imports"
+      ]
+    }
+  },
+  "fmt": {
+    "lineWidth": 120
+  }
+}
