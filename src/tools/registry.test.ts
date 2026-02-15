@@ -5,17 +5,18 @@ import { registry } from "./registry.ts";
 describe("ToolRegistry", () => {
   it("lists all registered tools", () => {
     const tools = registry.list();
-    assertEquals(tools.length >= 3, true);
+    assertEquals(tools.length >= 4, true);
     const ids = tools.map((t) => t.id);
-    assertEquals(ids.includes("social-media-retriever"), true);
-    assertEquals(ids.includes("social-media-anonymizer"), true);
-    assertEquals(ids.includes("vector-renderer"), true);
+    assertEquals(ids.includes("social-media-post-retriever"), true);
+    assertEquals(ids.includes("social-media-post-anonymizer"), true);
+    assertEquals(ids.includes("social-media-post-visualizer"), true);
+    assertEquals(ids.includes("convert-to-image"), true);
   });
 
   it("gets a tool by id", () => {
-    const tool = registry.get("vector-renderer");
+    const tool = registry.get("convert-to-image");
     assertEquals(tool !== undefined, true);
-    assertEquals(tool!.id, "vector-renderer");
+    assertEquals(tool!.id, "convert-to-image");
     assertEquals(tool!.name.length > 0, true);
   });
 

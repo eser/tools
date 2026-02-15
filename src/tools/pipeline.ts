@@ -44,14 +44,6 @@ export async function executePipeline(
 
   for (let i = 0; i < definition.steps.length; i++) {
     const step = definition.steps[i];
-    const tool = registry.get(step.toolId);
-
-    if (tool === undefined) {
-      return {
-        ok: false,
-        error: `Step ${i}: tool "${step.toolId}" not found`,
-      };
-    }
 
     // Build input: resolve expressions, then overlay legacy inputMapping
     const exprContext: ExpressionContext = { stepOutputs, variables };
@@ -60,6 +52,26 @@ export async function executePipeline(
     if (step.inputMapping !== undefined) {
       const mapped = resolveInputMappings(step.inputMapping, stepOutputs);
       input = { ...input, ...mapped };
+    }
+
+    // Bypassed steps pass resolved input through as output without execution
+    if (step.bypass) {
+      stepOutputs.push(input);
+      stepResults.push({
+        toolId: step.toolId,
+        output: input,
+        durationMs: 0,
+      });
+      continue;
+    }
+
+    const tool = registry.get(step.toolId);
+
+    if (tool === undefined) {
+      return {
+        ok: false,
+        error: `Step ${i}: tool "${step.toolId}" not found`,
+      };
     }
 
     context.onProgress?.({

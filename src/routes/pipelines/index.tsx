@@ -28,12 +28,7 @@ function PipelinesPage() {
           </Card>
         </Link>
         {pipelines.map((pipeline) => (
-          <Link
-            key={pipeline.id}
-            to="/pipelines/$pipelineId"
-            params={{ pipelineId: pipeline.id }}
-            className="no-underline"
-          >
+          <Link key={pipeline.id} to="/pipelines/$pipelineId" params={{ pipelineId: pipeline.id }} className="no-underline">
             <Card className="hover:border-primary transition-colors cursor-pointer h-full">
               <CardHeader>
                 <CardTitle className="text-lg">{pipeline.name}</CardTitle>

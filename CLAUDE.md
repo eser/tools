@@ -23,9 +23,12 @@ Register new tools in `src/tools/_registry.gen.ts`.
 
 ## Current Tools
 
-1. **social-media-retriever** — Fetches posts + comments from Twitter/X or Reddit
-2. **social-media-anonymizer** — Anonymizes user identities, generates themed SVG
-3. **vector-renderer** — Converts SVG to PNG/SVG (generic format conversion)
+1. **social-media-post-retriever** — Fetches posts + comments from Twitter/X or Reddit
+2. **social-media-post-anonymizer** — Anonymizes user identities, outputs same format as retriever
+3. **social-media-post-visualizer** — Generates themed SVG preview of social media posts
+4. **convert-to-image** — Converts SVG to PNG/JPG (rasterization)
+5. **save-file** — Saves text or base64-encoded binary data to disk
+6. **variable-set** — Sets a named variable in pipeline context
 
 ## Pipeline System
 

@@ -1,4 +1,8 @@
 import { CopyButton } from "@/components/copy-button.tsx";
+import {
+  getImagePreview,
+  ImagePreviewCard,
+} from "@/components/output-preview.tsx";
 
 interface ToolOutputProps {
   data: unknown;
@@ -27,44 +31,17 @@ export function ToolOutput(props: ToolOutputProps) {
     );
   }
 
-  // Check if output has an SVG field
-  const dataObj = data as Record<string, unknown>;
-  const hasSvg = typeof dataObj.svg === "string" && dataObj.svg.length > 0;
-
-  // Check if output has base64 image data
-  const hasImage =
-    typeof dataObj.data === "string" &&
-    dataObj.mimeType === "image/png";
+  const image = getImagePreview(data);
 
   return (
     <div className="space-y-4">
-      {/* SVG preview */}
-      {hasSvg && (
-        <div className="rounded-lg border border-border overflow-hidden">
-          <div className="px-3 py-2 bg-muted text-xs font-medium border-b border-border">
-            SVG Preview
-          </div>
-          <div
-            className="p-4 flex justify-center"
-            dangerouslySetInnerHTML={{ __html: dataObj.svg as string }}
-          />
-        </div>
-      )}
-
-      {/* Base64 image preview */}
-      {hasImage && (
-        <div className="rounded-lg border border-border overflow-hidden">
-          <div className="px-3 py-2 bg-muted text-xs font-medium border-b border-border">
-            PNG Preview
-          </div>
-          <div className="p-4 flex justify-center">
-            <img
-              src={`data:image/png;base64,${dataObj.data as string}`}
-              alt="Rendered output"
-              className="max-w-full"
-            />
-          </div>
-        </div>
+      {/* Image / SVG preview with copy & click-to-expand */}
+      {image && (
+        <ImagePreviewCard
+          image={image}
+          output={data}
+          label={image.mimeType === "image/svg+xml" ? "SVG Preview" : "Image Preview"}
+        />
       )}
 
       {/* JSON output */}

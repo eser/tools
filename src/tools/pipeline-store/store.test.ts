@@ -29,7 +29,7 @@ describe("pipelineStore.list", () => {
       id: "older",
       name: "Older",
       description: "",
-      steps: [{ toolId: "vector-renderer" }],
+      steps: [{ toolId: "convert-to-image" }],
     });
 
     // Small delay to ensure different timestamps
@@ -39,7 +39,7 @@ describe("pipelineStore.list", () => {
       id: "newer",
       name: "Newer",
       description: "",
-      steps: [{ toolId: "vector-renderer" }],
+      steps: [{ toolId: "convert-to-image" }],
     });
 
     const result = await pipelineStore.list();
@@ -58,7 +58,7 @@ describe("pipelineStore.save", () => {
       id: "test-save",
       name: "Test Save",
       description: "A test",
-      steps: [{ toolId: "vector-renderer", input: { svg: "<svg/>" } }],
+      steps: [{ toolId: "convert-to-image", input: { svg: "<svg/>" } }],
     });
 
     assertEquals(result.ok, true);
@@ -74,7 +74,7 @@ describe("pipelineStore.save", () => {
       id: "test-update",
       name: "First",
       description: "",
-      steps: [{ toolId: "vector-renderer" }],
+      steps: [{ toolId: "convert-to-image" }],
     });
 
     await new Promise((r) => setTimeout(r, 10));
@@ -83,7 +83,7 @@ describe("pipelineStore.save", () => {
       id: "test-update",
       name: "Updated",
       description: "",
-      steps: [{ toolId: "vector-renderer" }],
+      steps: [{ toolId: "convert-to-image" }],
     });
 
     assertEquals(first.ok, true);
@@ -102,7 +102,7 @@ describe("pipelineStore.get", () => {
       id: "test-get",
       name: "Get Test",
       description: "desc",
-      steps: [{ toolId: "vector-renderer", input: { svg: "<svg/>" } }],
+      steps: [{ toolId: "convert-to-image", input: { svg: "<svg/>" } }],
     });
 
     const result = await pipelineStore.get("test-get");
@@ -129,7 +129,7 @@ describe("pipelineStore.remove", () => {
       id: "test-delete",
       name: "Delete Me",
       description: "",
-      steps: [{ toolId: "vector-renderer" }],
+      steps: [{ toolId: "convert-to-image" }],
     });
 
     const deleteResult = await pipelineStore.remove("test-delete");

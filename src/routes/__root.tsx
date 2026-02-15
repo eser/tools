@@ -46,6 +46,12 @@ function RootComponent() {
                 >
                   Pipelines
                 </Link>
+                <Link
+                  to="/designer"
+                  className="text-muted-foreground hover:text-foreground no-underline"
+                >
+                  Designer
+                </Link>
                 <ModeToggle />
               </nav>
             </div>

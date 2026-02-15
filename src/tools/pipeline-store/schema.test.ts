@@ -54,13 +54,13 @@ describe("PipelineSlugSchema", () => {
 
 describe("PipelineStepSchema", () => {
   it("accepts a minimal step with toolId only", () => {
-    const result = PipelineStepSchema.safeParse({ toolId: "vector-renderer" });
+    const result = PipelineStepSchema.safeParse({ toolId: "convert-to-image" });
     assertEquals(result.success, true);
   });
 
   it("accepts a step with input", () => {
     const result = PipelineStepSchema.safeParse({
-      toolId: "vector-renderer",
+      toolId: "convert-to-image",
       input: { svg: "<svg/>", format: "svg" },
     });
     assertEquals(result.success, true);
@@ -68,7 +68,7 @@ describe("PipelineStepSchema", () => {
 
   it("accepts a step with inputMapping", () => {
     const result = PipelineStepSchema.safeParse({
-      toolId: "vector-renderer",
+      toolId: "convert-to-image",
       inputMapping: { svg: { fromStep: 0, field: "data" } },
     });
     assertEquals(result.success, true);
@@ -86,7 +86,7 @@ describe("SavePipelineInputSchema", () => {
       id: "test-pipeline",
       name: "Test Pipeline",
       description: "A test pipeline",
-      steps: [{ toolId: "vector-renderer", input: { svg: "<svg/>" } }],
+      steps: [{ toolId: "convert-to-image", input: { svg: "<svg/>" } }],
     });
     assertEquals(result.success, true);
   });
@@ -95,7 +95,7 @@ describe("SavePipelineInputSchema", () => {
     const result = SavePipelineInputSchema.parse({
       id: "test",
       name: "Test",
-      steps: [{ toolId: "vector-renderer" }],
+      steps: [{ toolId: "convert-to-image" }],
     });
     assertEquals(result.description, "");
   });
@@ -124,7 +124,7 @@ describe("SavedPipelineSchema", () => {
       id: "test",
       name: "Test",
       description: "",
-      steps: [{ toolId: "vector-renderer" }],
+      steps: [{ toolId: "convert-to-image" }],
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
@@ -136,7 +136,7 @@ describe("SavedPipelineSchema", () => {
       id: "test",
       name: "Test",
       description: "",
-      steps: [{ toolId: "vector-renderer" }],
+      steps: [{ toolId: "convert-to-image" }],
     });
     assertEquals(result.success, false);
   });

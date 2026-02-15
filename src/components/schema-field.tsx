@@ -65,7 +65,7 @@ export function SchemaField(props: SchemaFieldProps) {
 
       {control === "select" && (
         <Select
-          value={String(value ?? "")}
+          value={String(value ?? schema.default ?? "")}
           onValueChange={(val) => onChange(val || undefined)}
         >
           <SelectTrigger className="w-full">

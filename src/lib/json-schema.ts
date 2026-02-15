@@ -20,6 +20,21 @@ export interface JsonSchema {
 }
 
 /**
+ * Extract default values from a JSON Schema's properties.
+ */
+export function getSchemaDefaults(schema: JsonSchema): Record<string, unknown> {
+  const defaults: Record<string, unknown> = {};
+  if (!schema.properties) return defaults;
+
+  for (const [key, prop] of Object.entries(schema.properties)) {
+    if (prop.default !== undefined) {
+      defaults[key] = prop.default;
+    }
+  }
+  return defaults;
+}
+
+/**
  * Determine the UI control type for a JSON Schema property.
  */
 export function getFieldControl(

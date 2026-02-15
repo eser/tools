@@ -6,7 +6,7 @@ export const tool: ToolDefinition = {
   id: "variable-set",
   name: "Variable Set",
   description: "Set a named variable for use in subsequent pipeline steps",
-  category: "utility",
+  category: "Utility",
   inputSchema: VariableSetInputSchema,
   outputSchema: VariableSetOutputSchema,
   execute,

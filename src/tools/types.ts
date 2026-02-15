@@ -56,6 +56,8 @@ export interface PipelineStep {
   input?: Record<string, unknown>;
   /** Map fields from previous step outputs */
   inputMapping?: Record<string, InputMapping>;
+  /** When true, execution is skipped and input is passed through as output */
+  bypass?: boolean;
 }
 
 export interface InputMapping {
