@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const ConvertToImageInputSchema = z.object({
   svg: z.string().describe("SVG content string"),
-  format: z.enum(["png", "jpg"]).default("png").describe("Output image format"),
+  format: z.enum(["png", "jpg"]).default("jpg").describe("Output image format"),
   multiplier: z.enum(["1x", "2x", "4x", "8x", "16x"]).default("4x").describe("Resolution multiplier — renders at NxN pixel density while keeping the same visual dimensions"),
   width: z.number().int().min(1).max(4096).optional().describe("Output width in pixels"),
   height: z.number().int().min(1).max(4096).optional().describe("Output height in pixels"),
